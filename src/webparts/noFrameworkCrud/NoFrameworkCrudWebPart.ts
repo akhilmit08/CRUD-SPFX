@@ -30,7 +30,7 @@ export default class NoFrameworkCrudWebPart extends BaseClientSideWebPart<INoFra
               <div class="ms-Grid-row ms-bgColor-themeDark ms-fontColor-white ${styles.row}">
                 <div class="ms-Grid-col ms-u-lg10 ms-u-xl8 ms-u-xlPush2 ms-u-lgPush1">
                   <button class="${styles.button} create-Button">
-                    <span class="${styles.label}">Create item</span>
+                    <span class="${styles.label}">Create item up</span>
                   </button>
                   <button class="${styles.button} read-Button">
                     <span class="${styles.label}">Read item</span>
