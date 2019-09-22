@@ -10,10 +10,14 @@ import { escape } from '@microsoft/sp-lodash-subset';
 
 import styles from './NoFrameworkCrudWebPart.module.scss';
 import * as strings from 'NoFrameworkCrudWebPartStrings';
-
+import pnp, {sp, Item} from "sp-pnp-js";
 export interface INoFrameworkCrudWebPartProps {
   listName: string;
 }
+
+export interface ISPListCustomers{
+  value:IListItem[];
+  }
 
 export default class NoFrameworkCrudWebPart extends BaseClientSideWebPart<INoFrameworkCrudWebPartProps> {
 
@@ -30,13 +34,25 @@ export default class NoFrameworkCrudWebPart extends BaseClientSideWebPart<INoFra
               <div class="ms-Grid-row ms-bgColor-themeDark ms-fontColor-white ${styles.row}">
                 <div class="ms-Grid-col ms-u-lg10 ms-u-xl8 ms-u-xlPush2 ms-u-lgPush1">
                   <button class="${styles.button} create-Button">
-                    <span class="${styles.label}">Create item up</span>
+                    <span class="${styles.label}">Create item</span>
                   </button>
                   <button class="${styles.button} read-Button">
                     <span class="${styles.label}">Read item</span>
                   </button>
+                 
                 </div>
               </div>
+
+              <div class="ms-Grid-row ms-bgColor-themeDark ms-fontColor-white ${styles.row}">
+                <div class="ms-Grid-col ms-u-lg10 ms-u-xl8 ms-u-xlPush2 ms-u-lgPush1">
+                <button class="${styles.button} read">
+                <span class="${styles.label}">Read item PNP</span>
+              </button>
+              <button class="${styles.button} add-Button">
+              <span class="${styles.label}">Add item</span>
+            </button>
+                </div>
+                </div>
 
               <div class="ms-Grid-row ms-bgColor-themeDark ms-fontColor-white ${styles.row}">
                 <div class="ms-Grid-col ms-u-lg10 ms-u-xl8 ms-u-xlPush2 ms-u-lgPush1">
@@ -48,7 +64,12 @@ export default class NoFrameworkCrudWebPart extends BaseClientSideWebPart<INoFra
                   </button>
                 </div>
               </div>
-
+              <div>
+              <input id="EmployeeName"  placeholder="EmployeeName"/>  
+              <input id="EmployeeAddress"  placeholder="EmployeeAddress"/>  
+              </div>
+              <div id="spListContainer"/>
+              </div>
               <div class="ms-Grid-row ms-bgColor-themeDark ms-fontColor-white ${styles.row}">
                 <div class="ms-Grid-col ms-u-lg10 ms-u-xl8 ms-u-xlPush2 ms-u-lgPush1">
                   <div class="status"></div>
@@ -65,10 +86,62 @@ export default class NoFrameworkCrudWebPart extends BaseClientSideWebPart<INoFra
   private setButtonsEventHandlers(): void {  
     const webPart: NoFrameworkCrudWebPart = this;  
     this.domElement.querySelector('button.create-Button').addEventListener('click', () => { webPart.createItem(); });  
-    this.domElement.querySelector('button.read-Button').addEventListener('click', () => { webPart.readItem(); });  
+    this.domElement.querySelector('button.add-Button').addEventListener('click', () => { webPart.AddItem(); });  
+    this.domElement.querySelector('button.read-Button').addEventListener('click', () => { webPart.readItem(); }); 
+    this.domElement.querySelector('button.read').addEventListener('click', () => { webPart.readItemPNP(); }); 
     this.domElement.querySelector('button.update-Button').addEventListener('click', () => { webPart.updateItem(); });  
     this.domElement.querySelector('button.delete-Button').addEventListener('click', () => { webPart.deleteItem(); });  
-  }  
+  } 
+  
+private _getListCustomerPnp():Promise<IListItem[]>
+{
+  pnp.setup({
+    spfxContext: this.context
+  });
+return pnp.sp.web.lists.getByTitle(`Employee`).items.
+top(100).orderBy("Title").select("Title","EmployeeID",
+"EmployeeName","EmployeeAddress","EmployeeType","Author/Id","Author/Title").expand
+("Author").get().then
+(
+(response:any[])=>{
+return response;
+});
+}
+
+private _renderListCustomer(items:IListItem[]):void
+{
+let html:string=`<table width='100%' border=1>`;
+html+=`<thead><th>ID</th><th>Name</th><th>Address</th><th>Type</th><th>Author</th>
+`+
+`</thead><tbody>`;
+
+items.forEach((item:IListItem)=>
+{
+html+= `<tr><td>${item.EmployeeID}</td>
+<td>${item.EmployeeName}</td>
+<td>${item.EmployeeAddress}</td>
+<td>${item.EmployeeType}</td>
+<td>${item.Author.Title}</td>
+
+</tr>`;
+});
+html+=`</tbody></table>`;
+const listContainer:Element=this.domElement.querySelector("#spListContainer");
+listContainer.innerHTML=html;
+}
+private AddItem(): void {
+  pnp.setup({
+    spfxContext: this.context
+  });
+  pnp.sp.web.lists.getByTitle('Employee').items.add({      
+    EmployeeName : document.getElementById('EmployeeName')["value"],  
+    EmployeeAddress : document.getElementById('EmployeeAddress')["value"]
+   
+ }); 
+
+  alert("Record with Employee Name : "+ document.getElementById('EmployeeName')["value"] + " Added !"); 
+  this.readItemPNP();
+}
   
   private createItem(): void {
     const body: string = JSON.stringify({
@@ -94,6 +167,12 @@ export default class NoFrameworkCrudWebPart extends BaseClientSideWebPart<INoFra
       this.updateStatus('Error while creating the item: ' + error);
     });
   }
+  private readItemPNP(): void {
+    this._getListCustomerPnp().then((response)=>
+    {
+    this._renderListCustomer(response);
+    });
+  } 
   private readItem(): void {
     this.getLatestItemId()
       .then((itemId: number): Promise<SPHttpClientResponse> => {
